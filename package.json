@@ -1,0 +1,22 @@
+{
+  "name": "lattice",
+  "version": "0.1.0",
+  "description": "局域网内的小聚点：文件、剪贴板、便签、链接共享",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js"
+  },
+  "keywords": ["lan", "p2p", "share", "files", "lattice"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

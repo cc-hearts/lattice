@@ -1,0 +1,77 @@
+# Lattice · 局域网小聚点
+
+> 在同一局域网内，无需互联网，文件、剪贴板、便签、链接随手共享。
+
+## 特性
+
+- 📁 **文件共享** - 拖拽上传，自动列出，所有节点可见可下载
+- 🔄 **跨节点自动同步 (V0.2)** - A 上传的文件自动推一份给 B、C，所有节点都有完整副本
+- 🔒 **共享密钥鉴权** - 用 `LATTICE_SECRET` 防止陌生节点乱推
+- 📋 **剪贴板同步 (V0.3 全网同步)** - 一端粘贴，所有设备秒同步
+- 📝 **共享便签 (V0.3 全网同步)** - 像便利贴一样，写下就贴上
+- 🔗 **链接快传 (V0.3 全网同步)** - 投一个 URL，全员可点
+- 🔍 **自动发现** - 同网段自动识别其他节点，不用记 IP
+- 🔄 **实时刷新** - WebSocket 推送，对方一动你就看见
+- 🚫 **去重 + 循环防护 (V0.3)** - 不会无限循环推送
+
+## 快速开始
+
+```bash
+# 安装依赖
+npm install
+
+# 启动
+npm start
+
+# 同一局域网的设备浏览器打开：
+# http://<本机IP>:7777
+```
+
+自定义端口和节点名：
+```bash
+PORT=8888 LATTICE_NAME=客厅的Mac node server/index.js
+```
+
+## 目录结构
+
+```
+lattice/
+├── server/           后端
+│   ├── index.js      入口
+│   ├── discovery.js  UDP 广播自动发现
+│   ├── store.js      本地存储
+│   ├── ws.js         WebSocket
+│   └── api/          REST API
+├── public/           前端（单页）
+└── data/             运行时数据（自动创建）
+```
+
+## API 速览
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET  | /api/info | 节点信息 + 邻居 |
+| GET  | /api/files | 文件列表 |
+| POST | /api/files | 上传（multipart） |
+| GET  | /api/files/:id | 下载 |
+| DELETE | /api/files/:id | 删除 |
+| GET  | /api/clipboard | 最新剪贴板 |
+| POST | /api/clipboard | 推送剪贴板 |
+| GET/POST/DELETE | /api/notes | 便签 CRUD |
+| GET/POST/DELETE | /api/links | 链接 CRUD |
+
+## 后续路线
+
+- [x] ~~跨节点文件同步 (V0.2)~~
+- [x] ~~便签/剪贴板/链接跨节点同步 (V0.3)~~
+- [x] ~~删除跨节点同步 (V0.3)~~
+- [ ] 失败重试 + 断点续传
+- [ ] 文件预览（图片/PDF/视频）
+- [ ] 鉴权强化（基于节点名 + 共享密钥）
+- [ ] PWA 离线缓存
+- [ ] 桌面客户端（Electron）
+- [ ] 文件夹结构 + 标签
+
+## 许可
+
+MIT

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lattice · 局域网小聚点</title>
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --card: #ffffff;
+      --border: #e7e5e4;
+      --text: #1c1917;
+      --muted: #78716c;
+      --accent: #6366f1;
+      --accent-light: #eef2ff;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo { font-size: 20px; font-weight: 600; }
+    .logo span { color: var(--accent); }
+    .info { font-size: 13px; color: var(--muted); }
+    .peers { display: flex; gap: 6px; align-items: center; }
+    .peer-tag {
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 15px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab:hover { color: var(--text); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .file-list { list-style: none; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-name { flex: 1; font-size: 14px; }
+    .file-meta { color: var(--muted); font-size: 12px; margin-right: 16px; }
+    button, .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { opacity: 0.9; }
+    button.danger { background: var(--danger); }
+    button.ghost { background: transparent; color: var(--muted); }
+    input, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 80px; resize: vertical; }
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .note-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .note {
+      padding: 14px;
+      border-radius: 6px;
+      position: relative;
+      word-break: break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .note-meta { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .note-delete { position: absolute; top: 6px; right: 6px; opacity: 0; transition: opacity 0.15s; }
+    .note:hover .note-delete { opacity: 1; }
+    .link-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .link-item:last-child { border-bottom: none; }
+    .link-title { flex: 1; }
+    .link-title a { color: var(--accent); text-decoration: none; }
+    .link-title a:hover { text-decoration: underline; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--text); color: white;
+      padding: 10px 20px; border-radius: 6px;
+      opacity: 0; transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > * { flex: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Lattice <span>·</span> 局域网小聚点</div>
+    <div class="peers" id="peers"></div>
+    <div class="info" id="info">加载中...</div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" data-tab="files">📁 文件</button>
+      <button class="tab" data-tab="clipboard">📋 剪贴板</button>
+      <button class="tab" data-tab="notes">📝 便签</button>
+      <button class="tab" data-tab="links">🔗 链接</button>
+    </div>
+
+    <!-- 文件 -->
+    <div class="panel active" id="panel-files">
+      <div class="card">
+        <div class="upload-zone" id="dropzone">
+          <p style="font-size: 32px; margin-bottom: 8px;">📤</p>
+          <p>拖拽文件到此处，或点击选择文件</p>
+          <input type="file" id="fileInput" multiple style="display:none">
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">共享文件</h3>
+        <ul class="file-list" id="fileList"></ul>
+      </div>
+    </div>
+
+    <!-- 剪贴板 -->
+    <div class="panel" id="panel-clipboard">
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">最新剪贴板</h3>
+        <textarea id="clipText" placeholder="粘贴文本，这里所有设备都能看到"></textarea>
+        <div class="row" style="margin-top: 10px;">
+          <input id="clipFrom" placeholder="你的名字（可选）" style="max-width: 200px;">
+          <button id="clipSend">同步到所有节点</button>
+        </div>
+        <div id="clipLatest" style="margin-top: 16px; padding: 12px; background: var(--accent-light); border-radius: 6px; display: none;"></div>
+      </div>
+    </div>
+
+    <!-- 便签 -->
+    <div class="panel" id="panel-notes">
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">新建便签</h3>
+        <textarea id="noteText" placeholder="写点什么..."></textarea>
+        <div class="row" style="margin-top: 10px;">
+          <input type="color" id="noteColor" value="#fef3c7" style="max-width: 60px; padding: 2px;">
+          <input id="noteFrom" placeholder="署名（可选）" style="max-width: 200px;">
+          <button id="noteAdd">贴上去</button>
+        </div>
+      </div>
+      <div class="note-grid" id="noteGrid"></div>
+    </div>
+
+    <!-- 链接 -->
+    <div class="panel" id="panel-links">
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">分享链接</h3>
+        <div class="row">
+          <input id="linkUrl" placeholder="https://...">
+          <input id="linkTitle" placeholder="标题（可选）" style="max-width: 200px;">
+          <button id="linkAdd">投递</button>
+        </div>
+      </div>
+      <div class="card" id="linkList"></div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Tab 切换
+    document.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+      };
+    });
+
+    // Toast
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    // 工具函数
+    const fmtSize = b => {
+      if (b < 1024) return b + ' B';
+      if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+      if (b < 1024 * 1024 * 1024) return (b / 1024 / 1024).toFixed(1) + ' MB';
+      return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+    };
+    const fmtTime = ts => {
+      const d = new Date(ts);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) {
+        return d.toTimeString().slice(0, 5);
+      }
+      return `${d.getMonth() + 1}/${d.getDate()} ${d.toTimeString().slice(0, 5)}`;
+    };
+
+    // 节点信息
+    async function loadInfo() {
+      const r = await fetch('/api/info');
+      const info = await r.json();
+      document.getElementById('info').textContent = `${info.name} · ${info.peers.length + 1} 个节点在线`;
+      const peersEl = document.getElementById('peers');
+      peersEl.innerHTML = info.peers.map(p => `<span class="peer-tag">${p.name}</span>`).join('');
+    }
+    loadInfo();
+    setInterval(loadInfo, 5000);
+
+    // ====== 文件 ======
+    async function loadFiles() {
+      const r = await fetch('/api/files');
+      const files = await r.json();
+      const el = document.getElementById('fileList');
+      if (files.length === 0) {
+        el.innerHTML = '<div class="empty">还没有共享文件</div>';
+        return;
+      }
+      el.innerHTML = files.map(f => `
+        <li class="file-item">
+          <div class="file-name">📄 ${f.name}</div>
+          <div class="file-meta">${fmtSize(f.size)} · ${fmtTime(f.mtime)}</div>
+          <a href="${f.url}" download><button>下载</button></a>
+          <button class="danger" onclick="deleteFile('${f.id}')">删除</button>
+        </li>
+      `).join('');
+    }
+    loadFiles();
+
+    async function deleteFile(id) {
+      if (!confirm('确认删除？')) return;
+      await fetch('/api/files/' + encodeURIComponent(id), { method: 'DELETE' });
+      toast('已删除');
+      loadFiles();
+    }
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = e => uploadFiles(e.target.files);
+    dropzone.ondragover = e => { e.preventDefault(); dropzone.classList.add('dragover'); };
+    dropzone.ondragleave = () => dropzone.classList.remove('dragover');
+    dropzone.ondrop = e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      uploadFiles(e.dataTransfer.files);
+    };
+    async function uploadFiles(files) {
+      if (!files.length) return;
+      const fd = new FormData();
+      for (const f of files) fd.append('files', f);
+      toast('上传中...');
+      await fetch('/api/files', { method: 'POST', body: fd });
+      toast('上传完成');
+      loadFiles();
+    }
+
+    // ====== 剪贴板 ======
+    async function loadClip() {
+      const r = await fetch('/api/clipboard');
+      const data = await r.json();
+      const el = document.getElementById('clipLatest');
+      if (data) {
+        el.style.display = 'block';
+        el.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:6px;">来自 ${data.from} · ${fmtTime(data.ts)}</div><div style="white-space:pre-wrap;">${escapeHtml(data.text)}</div>`;
+      } else {
+        el.style.display = 'none';
+      }
+    }
+    loadClip();
+    document.getElementById('clipSend').onclick = async () => {
+      const text = document.getElementById('clipText').value.trim();
+      const from = document.getElementById('clipFrom').value.trim() || '匿名';
+      if (!text) return toast('内容不能为空');
+      await fetch('/api/clipboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, from }),
+      });
+      toast('已同步');
+      document.getElementById('clipText').value = '';
+      loadClip();
+    };
+
+    // ====== 便签 ======
+    async function loadNotes() {
+      const r = await fetch('/api/notes');
+      const notes = await r.json();
+      const el = document.getElementById('noteGrid');
+      if (notes.length === 0) {
+        el.innerHTML = '<div class="empty" style="grid-column:1/-1;">还没有便签</div>';
+        return;
+      }
+      el.innerHTML = notes.map(n => `
+        <div class="note" style="background:${n.color}">
+          <button class="danger note-delete" onclick="deleteNote('${n.id}')">×</button>
+          <div>${escapeHtml(n.text)}</div>
+          <div class="note-meta">${n.from} · ${fmtTime(n.ts)}</div>
+        </div>
+      `).join('');
+    }
+    loadNotes();
+    document.getElementById('noteAdd').onclick = async () => {
+      const text = document.getElementById('noteText').value.trim();
+      const color = document.getElementById('noteColor').value;
+      const from = document.getElementById('noteFrom').value.trim() || '匿名';
+      if (!text) return toast('内容不能为空');
+      await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, color, from }),
+      });
+      document.getElementById('noteText').value = '';
+      toast('已贴上');
+      loadNotes();
+    };
+    async function deleteNote(id) {
+      await fetch('/api/notes/' + id, { method: 'DELETE' });
+      loadNotes();
+    }
+
+    // ====== 链接 ======
+    async function loadLinks() {
+      const r = await fetch('/api/links');
+      const links = await r.json();
+      const el = document.getElementById('linkList');
+      if (links.length === 0) {
+        el.innerHTML = '<div class="empty">还没有链接</div>';
+        return;
+      }
+      el.innerHTML = links.map(l => `
+        <div class="link-item">
+          <div class="link-title">
+            <a href="${escapeAttr(l.url)}" target="_blank">${escapeHtml(l.title)}</a>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${escapeHtml(l.url)}</div>
+          </div>
+          <div class="file-meta">${l.from} · ${fmtTime(l.ts)}</div>
+          <button class="danger" onclick="deleteLink('${l.id}')">删除</button>
+        </div>
+      `).join('');
+    }
+    loadLinks();
+    document.getElementById('linkAdd').onclick = async () => {
+      const url = document.getElementById('linkUrl').value.trim();
+      const title = document.getElementById('linkTitle').value.trim();
+      const from = '匿名';
+      if (!url) return toast('链接不能为空');
+      await fetch('/api/links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, title, from }),
+      });
+      document.getElementById('linkUrl').value = '';
+      document.getElementById('linkTitle').value = '';
+      toast('已投递');
+      loadLinks();
+    };
+    async function deleteLink(id) {
+      await fetch('/api/links/' + id, { method: 'DELETE' });
+      loadLinks();
+    }
+
+    // WebSocket 实时刷新
+    const ws = new WebSocket('ws://' + location.host + '/ws');
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'files:changed') loadFiles();
+      if (msg.type === 'clipboard:changed') loadClip();
+      if (msg.type === 'notes:changed') loadNotes();
+      if (msg.type === 'links:changed') loadLinks();
+    };
+
+    // HTML 转义
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+  </script>
+</body>
+</html>
