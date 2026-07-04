@@ -45,6 +45,30 @@ const PORT = process.env.PORT || 7777;
 const NODE_NAME = process.env.LATTICE_NAME || os.hostname();
 
 /**
+ * 获取本机的局域网 IPv4 地址
+ * 优先返回第一个非内部、非虚拟的 IPv4 地址
+ * @returns {string} 形如 "192.168.1.100"，找不到则返回 "127.0.0.1"
+ *
+ * 为什么不用 ipconfig/ifconfig？
+ *   - 跨平台，Node 原生支持
+ *   - 比子进程调用快 1000 倍
+ *   - 解析逻辑可控（跳过虚拟网卡、APIPA 169.254.x.x 等）
+ */
+function getLocalIPv4() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      // 跳过内部回环、IPv6、非 running
+      if (net.family !== 'IPv4' || net.internal) continue;
+      // 跳过 APIPA（169.254.x.x，没连上路由器时系统自己分配的）
+      if (net.address.startsWith('169.254.')) continue;
+      return net.address;
+    }
+  }
+  return '127.0.0.1';
+}
+
+/**
  * 主函数：异步启动所有服务
  * 使用 async 是因为 store.init() 需要等待目录创建
  */
@@ -97,8 +121,10 @@ async function main() {
    * 用 0.0.0.0 而不是 127.0.0.1 是因为局域网内其他设备要能访问
    */
   server.listen(PORT, '0.0.0.0', () => {
+    const lanIP = getLocalIPv4();
     console.log(`\n  Lattice 已启动`);
     console.log(`  本机访问: http://localhost:${PORT}`);
+    console.log(`  局域网访问: http://${lanIP}:${PORT}    ← 给同网段其他设备用`);
     console.log(`  节点名:  ${NODE_NAME}`);
     console.log(`  按 Ctrl+C 退出\n`);
   });
