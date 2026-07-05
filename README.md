@@ -104,6 +104,7 @@ lattice/
 ├── scripts/          工具脚本
 │   ├── gen-icons.js  生成 PWA 图标
 │   └── selftest.js   自检脚本
+├── docs/DESKTOP.md  桌面端打包指南
 ├── docs/MOBILE.md    移动端打包指南
 └── data/             运行时数据（自动创建）
 ```
@@ -141,7 +142,7 @@ lattice/
 |------|--------|------|
 | 浏览器 | 打开 `http://<IP>:7777` | 临时用 |
 | PWA | 浏览器「加到主屏幕」 | 手机日常用，离线可开壳 |
-| 桌面客户端 | `npm run electron` | 电脑常驻，托盘后台 |
+| 桌面客户端 | `npm run electron` / `npm run electron:dist`（见 `docs/DESKTOP.md`）| 电脑常驻，托盘后台 |
 | 移动 App | Capacitor 打包（见 `docs/MOBILE.md`）| 上架 / 原生扫码 |
 
 ## 后续路线

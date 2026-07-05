@@ -59,7 +59,8 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/icons/icon-512.png"
+      "icon": "public/icons/icon-512.png",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": "dmg",
