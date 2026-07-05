@@ -224,6 +224,18 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // 401 拦截：session 失效（关浏览器重开 / 服务重启）时自动跳回锁屏页
+    const _fetch = window.fetch;
+    window.fetch = function (...args) {
+      return _fetch.apply(this, args).then((res) => {
+        if (res.status === 401) {
+          location.href = '/login.html';
+          throw new Error('unauthorized');
+        }
+        return res;
+      });
+    };
+
     // Tab 切换
     document.querySelectorAll('.tab').forEach(t => {
       t.onclick = () => {

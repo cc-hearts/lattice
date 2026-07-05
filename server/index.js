@@ -37,6 +37,7 @@ const clipboardApi = require('./api/clipboard');         // 剪贴板 API
 const notesApi = require('./api/notes');                 // 便签 API
 const linksApi = require('./api/links');                 // 链接 API
 const { router: syncRouter } = require('./sync');        // 跨节点同步路由（V0.3）
+const auth = require('./auth');                          // 浏览器访问鉴权（一次性访问码）
 const store = require('./store');                        // 存储层
 
 // 配置：可从环境变量覆盖
@@ -85,21 +86,37 @@ async function main() {
   // 解析 JSON 请求体，限制 5MB（便签/剪贴板够用）
   app.use(express.json({ limit: '5mb' }));
 
-  // 静态文件服务：public/ 目录下的 HTML/CSS/JS 直接对外提供
+  // 3. 挂载中间件 & 路由
+  // 顺序很关键：公开路由 → 鉴权门槛 → 受保护路由
+  //
+  //   公开：/api/login  /api/logout  /api/auth  （auth.router）
+  //         /api/sync   （节点间同步，用 LATTICE_SECRET，不走浏览器锁）
+  //         /login.html （锁屏页本身要能打开）
+  //   门槛：auth.requireAuth（未登录 → API 返 401，页面跳 /login.html）
+  //   保护：静态资源 + 浏览器用 REST API
+  app.use('/api', auth.router);                       // 登录 / 登出 / 状态
+  app.use('/api/sync', syncRouter);                   // V0.3 跨节点同步接收端
+  app.get('/login.html', (req, res) => {              // 锁屏页（已登录则跳主页）
+    const token = auth.parseToken(req.headers.cookie);
+    if (auth.isTokenValid(token)) return res.redirect('/');
+    res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
+  });
+
+  app.use(auth.requireAuth);                          // ← 鉴权门槛
+
+  // 静态文件服务：public/ 目录下的 HTML/CSS/JS（走到这里说明已登录）
   // 访问 http://localhost:7777/ 就会返回 public/index.html
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  // 3. 挂载 REST API
-  // 注意：/api/files 等子模块自己处理具体路径
+  // 浏览器用 REST API（子模块自己处理具体路径）
   app.use('/api/files', filesApi);
   app.use('/api/clipboard', clipboardApi);
   app.use('/api/notes', notesApi);
   app.use('/api/links', linksApi);
-  app.use('/api/sync', syncRouter);  // V0.3 跨节点同步接收端
 
   /**
    * 健康检查 + 节点信息接口
-   * 前端每 5 秒调用一次，用来显示"我在线"和"邻居有几个"
+   * 前端每 5 秒调用一次，用来显示“我在线”和“邻居有几个”
    */
   app.get('/api/info', (req, res) => {
     res.json({
@@ -126,6 +143,9 @@ async function main() {
     console.log(`  本机访问: http://localhost:${PORT}`);
     console.log(`  局域网访问: http://${lanIP}:${PORT}    ← 给同网段其他设备用`);
     console.log(`  节点名:  ${NODE_NAME}`);
+    console.log(`  🔒 访问密码: ${auth.PASSWORD}` +
+      (auth.PASSWORD_IS_RANDOM ? '   (本次随机生成, 重启换新)' : '   (来自 LATTICE_PASSWORD)'));
+    console.log(`     把密码发给要使用的设备, 在锁屏页输入即可进入`);
     console.log(`  按 Ctrl+C 退出\n`);
   });
 

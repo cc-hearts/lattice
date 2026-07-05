@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lattice · 访问锁</title>
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --card: #ffffff;
+      --border: #e7e5e4;
+      --text: #1c1917;
+      --muted: #78716c;
+      --accent: #6366f1;
+      --accent-light: #eef2ff;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .lock-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      width: 360px;
+      max-width: 100%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+    .lock-icon { font-size: 44px; text-align: center; margin-bottom: 8px; }
+    .lock-title { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 4px; }
+    .lock-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 20px; }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    button {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; min-height: 18px; }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 18px;
+      line-height: 1.6;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">Lattice 已上锁</div>
+    <div class="lock-sub">请输入访问密码</div>
+    <form id="form" autocomplete="on">
+      <input type="password" id="pwd" placeholder="访问密码" autofocus autocomplete="current-password">
+      <button type="submit" id="btn">进入</button>
+    </form>
+    <div class="err" id="err"></div>
+    <div class="hint">
+      密码由启动者从终端获取并分发<br>
+      服务重启后密码会换新，需重新输入
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('form');
+    const pwd = document.getElementById('pwd');
+    const btn = document.getElementById('btn');
+    const err = document.getElementById('err');
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '验证中...';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd.value }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.ok) {
+          location.href = '/';
+          return;
+        }
+        err.textContent = data.error || '密码错误';
+        pwd.select();
+      } catch (e) {
+        err.textContent = '网络错误，请重试';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '进入';
+      }
+    };
+  </script>
+</body>
+</html>

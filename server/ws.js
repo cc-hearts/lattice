@@ -23,6 +23,8 @@
  *   - 简单可靠，数据一致性由客户端轮询兜底
  */
 
+const { isTokenValid, parseToken } = require('./auth');
+
 const clients = new Set();
 
 /**
@@ -30,7 +32,14 @@ const clients = new Set();
  * 在 server/index.js 中调用
  */
 function attachWebSocket(wss) {
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    // 鉴权：浏览器建连时会带上同源 cookie，校验 lattice_session
+    // 未登录直接关闭（1008 策略违例），防止陌生人监听实时推送
+    const token = parseToken(req.headers.cookie);
+    if (!isTokenValid(token)) {
+      ws.close(1008, 'unauthorized');
+      return;
+    }
     clients.add(ws);
 
     // 关闭/出错时清理
