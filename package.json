@@ -1,22 +1,80 @@
 {
   "name": "lattice",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "局域网内的小聚点：文件、剪贴板、便签、链接共享",
-  "main": "server/index.js",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+    "dev": "nodemon server/index.js",
+    "icons": "node scripts/gen-icons.js",
+    "selftest": "node scripts/selftest.js",
+    "electron": "electron .",
+    "electron:build": "electron-builder --dir",
+    "electron:dist": "electron-builder",
+    "cap:sync": "cap sync",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios"
   },
-  "keywords": ["lan", "p2p", "share", "files", "lattice"],
+  "keywords": [
+    "lan",
+    "p2p",
+    "share",
+    "files",
+    "lattice",
+    "pwa"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "ws": "^8.18.0",
     "multer": "^1.4.5-lts.1",
-    "cors": "^2.8.5"
+    "qrcode": "^1.5.4",
+    "selfsigned": "^5.5.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/ios": "^6.1.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
     "nodemon": "^3.1.4"
+  },
+  "build": {
+    "appId": "works.earendil.lattice",
+    "productName": "Lattice",
+    "files": [
+      "server/**/*",
+      "public/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/icons/icon-512.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "public/icons/icon-512.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "public/icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

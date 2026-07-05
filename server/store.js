@@ -14,9 +14,11 @@
  * data/ 目录结构：
  *   data/
  *   ├── files/          # 上传的文件实体（multer 直接写这里）
+ *   ├── .chunks/        # 分片上传的临时分片（上传完成后清理）
  *   ├── notes.json      # 便签数据
  *   ├── clipboard.json  # 剪贴板历史（最多 20 条）
  *   ├── links.json      # 链接数据
+ *   ├── filemeta.json   # 文件元数据（标签/文件夹）V0.4
  *   └── peers.json      # 邻居节点（当前版本不持久化，仅内存）
  */
 
@@ -30,9 +32,11 @@ const DATA_DIR = process.env.LATTICE_DATA_DIR
   ? path.resolve(process.env.LATTICE_DATA_DIR)
   : path.join(__dirname, '..', 'data');
 const FILES_DIR = path.join(DATA_DIR, 'files');
+const CHUNKS_DIR = path.join(DATA_DIR, '.chunks');   // V0.4 分片上传临时目录
 const NOTES_FILE = path.join(DATA_DIR, 'notes.json');
 const CLIPBOARD_FILE = path.join(DATA_DIR, 'clipboard.json');
 const LINKS_FILE = path.join(DATA_DIR, 'links.json');
+const FILEMETA_FILE = path.join(DATA_DIR, 'filemeta.json');  // V0.4 文件元数据
 const PEERS_FILE = path.join(DATA_DIR, 'peers.json');
 
 /**
@@ -48,13 +52,13 @@ let peers = new Map();
  */
 async function init() {
   // 创建目录（recursive: true 表示父目录不存在也一起建）
-  for (const dir of [DATA_DIR, FILES_DIR]) {
+  for (const dir of [DATA_DIR, FILES_DIR, CHUNKS_DIR]) {
     if (!fsSync.existsSync(dir)) {
       await fs.mkdir(dir, { recursive: true });
     }
   }
   // 创建空的 JSON 文件（如果不存在）
-  for (const f of [NOTES_FILE, CLIPBOARD_FILE, LINKS_FILE, PEERS_FILE]) {
+  for (const f of [NOTES_FILE, CLIPBOARD_FILE, LINKS_FILE, FILEMETA_FILE, PEERS_FILE]) {
     if (!fsSync.existsSync(f)) {
       await fs.writeFile(f, '[]');
     }
@@ -114,6 +118,7 @@ module.exports = {
   init,
   DATA_DIR,
   FILES_DIR,
+  CHUNKS_DIR,
   // 文件读写工具
   readJson,
   writeJson,
@@ -121,6 +126,7 @@ module.exports = {
   NOTES_FILE,
   CLIPBOARD_FILE,
   LINKS_FILE,
+  FILEMETA_FILE,
   // peer 管理
   upsertPeer,
   getPeers,

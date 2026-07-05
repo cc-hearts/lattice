@@ -28,11 +28,16 @@ const http = require('http');
 const { URL } = require('url');
 const store = require('./store');
 const { broadcast } = require('./ws');
+const { makeAuthHeaders, nodeAuth } = require('./nodeauth');
 
 const router = express.Router();
 
 const SECRET = process.env.LATTICE_SECRET || '';
 const NODE_NAME = process.env.LATTICE_NAME || require('os').hostname();
+
+// V0.4 推送重试配置
+const MAX_RETRIES = 2;            // 失败后再重试 2 次（共 3 次尝试）
+const RETRY_DELAY_MS = 800;       // 首次重试间隔，指数退避
 
 /**
  * 已处理事件缓存（防止循环）
@@ -58,15 +63,9 @@ function markProcessed(source, type, id) {
 }
 
 /**
- * 鉴权
+ * 鉴权 —— V0.4 改用 nodeauth 中间件（HMAC + 时间戳 + 白名单）
+ * 保留对旧版明文 secret 的向后兼容
  */
-function checkSecret(req, res, next) {
-  if (!SECRET) return next();
-  if (req.headers['x-lattice-secret'] !== SECRET) {
-    return res.status(403).json({ error: 'invalid secret' });
-  }
-  next();
-}
 
 /**
  * 解析 body（JSON）
@@ -77,7 +76,7 @@ router.use(express.json({ limit: '1mb' }));
  * POST /api/sync
  * 接收其他节点推过来的数据变更
  */
-router.post('/', checkSecret, async (req, res) => {
+router.post('/', nodeAuth, async (req, res) => {
   try {
     const { type, payload, source, eventId } = req.body || {};
 
@@ -105,6 +104,11 @@ router.post('/', checkSecret, async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+/**
+ * V0.4 同步增加：filemeta:update（文件夹/标签）
+ * payload: { id, tags?, folder? }
+ */
 
 /**
  * 根据 type 把数据写入对应存储
@@ -157,6 +161,34 @@ async function dispatch(type, payload) {
     return { applied: true, notifyEvent: 'links:changed' };
   }
 
+  // V0.4 文件元数据（标签/文件夹）同步
+  if (type === 'filemeta:update') {
+    const meta = await store.readJson(store.FILEMETA_FILE);
+    const idx = meta.findIndex((m) => m.id === payload.id);
+    if (idx >= 0) {
+      meta[idx] = { ...meta[idx], ...payload };
+    } else {
+      meta.push(payload);
+    }
+    await store.writeJson(store.FILEMETA_FILE, meta);
+    return { applied: true, notifyEvent: 'files:changed' };
+  }
+
+  // V0.4 文件删除同步
+  if (type === 'files:delete') {
+    const fs = require('fs/promises');
+    const path = require('path');
+    try {
+      await fs.unlink(path.join(store.FILES_DIR, payload.id));
+    } catch {
+      // 不存在就算了
+    }
+    // 顺带清理元数据
+    const meta = await store.readJson(store.FILEMETA_FILE);
+    await store.writeJson(store.FILEMETA_FILE, meta.filter((m) => m.id !== payload.id));
+    return { applied: true, notifyEvent: 'files:changed' };
+  }
+
   return { applied: false, notifyEvent: 'noop' };
 }
 
@@ -188,14 +220,35 @@ async function pushToPeers(type, payload) {
 
   console.log(`[sync] 推送 ${type} 给 ${peers.length} 个 peers`);
 
+  // V0.4 失败重试：对每个 peer 最多重试 MAX_RETRIES 次，指数退避
   const results = await Promise.allSettled(
-    peers.map((peer) => postJson(peer, '/api/sync', body))
+    peers.map((peer) => postJsonWithRetry(peer, '/api/sync', body))
   );
 
   const ok = results.filter((r) => r.status === 'fulfilled').length;
   const fail = results.length - ok;
   console.log(`[sync] 推送 ${type} 完成：成功 ${ok}，失败 ${fail}`);
   return { ok, fail };
+}
+
+/**
+ * 带重试的 POST：失败后等待 RETRY_DELAY_MS * 2^attempt 再试
+ */
+async function postJsonWithRetry(peer, path, body) {
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await postJson(peer, path, body);
+    } catch (e) {
+      lastErr = e;
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+        console.log(`[sync] 重试 ${peer.name} (${attempt + 1}/${MAX_RETRIES}): ${e.message}`);
+      }
+    }
+  }
+  throw lastErr;
 }
 
 /**
@@ -213,8 +266,7 @@ function postJson(peer, path, body) {
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(body),
-          'X-Lattice-Secret': SECRET,
-          'X-Lattice-Source': NODE_NAME,
+          ...makeAuthHeaders(),
         },
         timeout: 5000,
       }, (res) => {

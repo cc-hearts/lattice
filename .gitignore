@@ -4,3 +4,10 @@ data/
 .DS_Store
 .vscode/
 .idea/
+
+# Capacitor / Electron 原生工程与构建产物（按需生成，不入库）
+android/
+ios/
+dist/
+electron/dist/
+.cxx

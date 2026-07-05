@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#6366f1"/>
+  <g stroke="#ffffff" stroke-width="10" stroke-linecap="round">
+    <line x1="96" y1="96" x2="96" y2="412"/>
+       <line x1="96" y1="96" x2="412" y2="96"/><line x1="202" y1="96" x2="202" y2="412"/>
+       <line x1="96" y1="202" x2="412" y2="202"/><line x1="308" y1="96" x2="308" y2="412"/>
+       <line x1="96" y1="308" x2="412" y2="308"/>
+  </g>
+  <circle cx="96" cy="96" r="20" fill="#ffffff"/><circle cx="96" cy="202" r="20" fill="#ffffff"/><circle cx="96" cy="308" r="20" fill="#ffffff"/><circle cx="96" cy="414" r="20" fill="#ffffff"/><circle cx="202" cy="96" r="20" fill="#ffffff"/><circle cx="202" cy="202" r="20" fill="#ffffff"/><circle cx="202" cy="308" r="20" fill="#ffffff"/><circle cx="202" cy="414" r="20" fill="#ffffff"/><circle cx="308" cy="96" r="20" fill="#ffffff"/><circle cx="308" cy="202" r="20" fill="#ffffff"/><circle cx="308" cy="308" r="20" fill="#ffffff"/><circle cx="308" cy="414" r="20" fill="#ffffff"/><circle cx="414" cy="96" r="20" fill="#ffffff"/><circle cx="414" cy="202" r="20" fill="#ffffff"/><circle cx="414" cy="308" r="20" fill="#ffffff"/><circle cx="414" cy="414" r="20" fill="#ffffff"/>
+</svg>

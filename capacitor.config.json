@@ -1,0 +1,28 @@
+{
+  "appId": "works.earendil.lattice",
+  "appName": "Lattice",
+  "webDir": "mobile/www",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "scheme": "capacitor",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#6366f1",
+      "showSpinner": false
+    }
+  }
+}

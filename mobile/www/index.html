@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Lattice · 连接节点</title>
+  <style>
+    :root {
+      --bg:#fafaf9; --card:#fff; --border:#e7e5e4; --text:#1c1917; --muted:#78716c;
+      --accent:#6366f1; --accent-light:#eef2ff; --danger:#ef4444;
+      --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    body {
+      font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+      background:var(--bg); color:var(--text); min-height:100vh;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom));
+    }
+    .logo { width:76px; height:76px; margin-bottom:14px; }
+    h1 { font-size:22px; margin-bottom:4px; }
+    .sub { color:var(--muted); font-size:13px; margin-bottom:22px; text-align:center; }
+    .card {
+      background:var(--card); border:1px solid var(--border); border-radius:14px;
+      padding:18px; width:100%; max-width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.05);
+    }
+    label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .url-row { display:flex; gap:8px; }
+    input {
+      flex:1; padding:12px 14px; border:1px solid var(--border); border-radius:10px;
+      font-size:16px; font-family:inherit; background:#fff;
+    }
+    input:focus { outline:none; border-color:var(--accent); }
+    button {
+      background:var(--accent); color:#fff; border:none; padding:12px 18px;
+      border-radius:10px; font-size:15px; cursor:pointer; font-weight:500;
+    }
+    button:active { transform:scale(0.97); }
+    .recents { margin-top:18px; }
+    .recents h3 { font-size:12px; color:var(--muted); margin-bottom:8px; font-weight:500; }
+    .recent-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+      margin-bottom:8px; cursor:pointer;
+    }
+    .recent-item:active { background:var(--accent-light); border-color:var(--accent); }
+    .recent-main { min-width:0; flex:1; }
+    .recent-name { font-size:14px; }
+    .recent-url { font-size:11px; color:var(--muted); margin-top:1px; word-break:break-all; }
+    .recent-del { background:transparent; color:var(--muted); border:none; padding:6px 8px; font-size:18px; line-height:1; }
+    .empty { color:var(--muted); font-size:12px; padding:8px 0; }
+    .err { color:var(--danger); font-size:12px; margin-top:8px; min-height:16px; text-align:center; }
+    .hint {
+      margin-top:20px; font-size:12px; color:var(--muted); line-height:1.7;
+      text-align:center; max-width:380px;
+    }
+    .hint code { background:var(--accent-light); color:var(--accent); padding:1px 6px; border-radius:4px; font-size:11px; }
+    .scan-btn { background:transparent; color:var(--accent); border:1px solid var(--accent); width:100%; margin-top:10px; padding:10px; }
+    .scan-btn:active { background:var(--accent-light); }
+  </style>
+</head>
+<body>
+  <!-- 内联 SVG logo，避免打包后图标路径问题 -->
+  <svg class="logo" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <rect width="512" height="512" rx="96" fill="#6366f1"/>
+    <g stroke="#fff" stroke-width="10" stroke-linecap="round">
+      <line x1="128" y1="128" x2="128" y2="384"/><line x1="234" y1="128" x2="234" y2="384"/>
+      <line x1="340" y1="128" x2="340" y2="384"/><line x1="128" y1="128" x2="384" y2="128"/>
+      <line x1="128" y1="234" x2="384" y2="234"/><line x1="128" y1="340" x2="384" y2="340"/>
+    </g>
+    <g fill="#fff">
+      <circle cx="128" cy="128" r="20"/><circle cx="234" cy="128" r="20"/><circle cx="340" cy="128" r="20"/>
+      <circle cx="128" cy="234" r="20"/><circle cx="234" cy="234" r="20"/><circle cx="340" cy="234" r="20"/>
+      <circle cx="128" cy="340" r="20"/><circle cx="234" cy="340" r="20"/><circle cx="340" cy="340" r="20"/>
+    </g>
+  </svg>
+  <h1>Lattice</h1>
+  <div class="sub">局域网小聚点 · 连接到节点</div>
+
+  <div class="card">
+    <label>节点地址</label>
+    <div class="url-row">
+      <input id="url" type="url" placeholder="http://192.168.1.100:7777" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button id="connect">连接</button>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="recents" id="recents" style="display:none;">
+      <h3>最近连接</h3>
+      <div id="recentList"></div>
+    </div>
+    <button class="scan-btn" id="scanBtn" style="display:none;">📷 扫码连接</button>
+  </div>
+
+  <div class="hint">
+    在任意电脑上运行 <code>npm start</code> 启动 Lattice，<br>
+    把终端显示的<strong>局域网访问</strong>地址填到上方即可。<br><br>
+    手机与电脑需连同一个 WiFi。
+  </div>
+
+  <script>
+    const KEY = 'lattice.recents';
+    const MAX = 8;
+
+    function loadRecents() {
+      try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; }
+    }
+    function saveRecents(list) {
+      localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
+    }
+    function addRecent(url) {
+      const name = (() => {
+        try { const u = new URL(url); return u.hostname + ':' + u.port; } catch { return url; }
+      })();
+      let list = loadRecents().filter(r => r.url !== url);
+      list.unshift({ url, name, ts: Date.now() });
+      saveRecents(list);
+    }
+
+    function renderRecents() {
+      const list = loadRecents();
+      const box = document.getElementById('recents');
+      const el = document.getElementById('recentList');
+      if (list.length === 0) { box.style.display = 'none'; return; }
+      box.style.display = 'block';
+      el.innerHTML = list.map(r => `
+        <div class="recent-item" onclick="connect('${escapeAttr(r.url)}')">
+          <div class="recent-main">
+            <div class="recent-name">${escapeHtml(r.name)}</div>
+            <div class="recent-url">${escapeHtml(r.url)}</div>
+          </div>
+          <button class="recent-del" onclick="event.stopPropagation();delRecent('${escapeAttr(r.url)}')">×</button>
+        </div>
+      `).join('');
+    }
+
+    window.delRecent = function(url) {
+      saveRecents(loadRecents().filter(r => r.url !== url));
+      renderRecents();
+    };
+
+    window.connect = function(url) {
+      const err = document.getElementById('err');
+      err.textContent = '';
+      url = (url || '').trim();
+      if (!url) { err.textContent = '请输入节点地址'; return; }
+      if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+      let u;
+      try { u = new URL(url); } catch { err.textContent = '地址格式不对'; return; }
+      if (!u.hostname) { err.textContent = '地址格式不对'; return; }
+      addRecent(url);
+      // 跳转到节点 —— 同源后 cookie / WebSocket 全部正常
+      window.location.href = url;
+    };
+
+    document.getElementById('connect').onclick = () => connect(document.getElementById('url').value);
+    document.getElementById('url').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') connect(e.target.value);
+    });
+
+    // 扫码：原生壳里才有 Capacitor / BarcodeScanner 插件
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) {
+      document.getElementById('scanBtn').style.display = 'block';
+      document.getElementById('scanBtn').onclick = async () => {
+        try {
+          const { BarcodeScanner } = window.Capacitor.Plugins;
+          const perm = await BarcodeScanner.checkPermission({ force: true });
+          if (!perm.granted) return;
+          BarcodeScanner.prepare();
+          const result = await BarcodeScanner.startScan();
+          if (result.hasContent) connect(result.content);
+        } catch (e) { document.getElementById('err').textContent = '扫码失败'; }
+      };
+    }
+
+    function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+    function escapeAttr(s){return escapeHtml(s);}
+
+    // 自动填入上次的地址，但不自动跳转（让用户确认）
+    const last = loadRecents()[0];
+    if (last) document.getElementById('url').value = last.url;
+    renderRecents();
+    document.getElementById('url').focus();
+  </script>
+</body>
+</html>
